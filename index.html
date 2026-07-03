@@ -710,6 +710,79 @@
     margin-left:12px;
   }
   #mute-toggle:hover{ color:var(--amber); }
+
+  #badge-wall-toggle{
+    cursor:pointer;
+    user-select:none;
+    margin-left:12px;
+  }
+  #badge-wall-toggle:hover{ color:var(--amber); }
+
+  #badge-wall-panel{
+    position:absolute;
+    inset:0;
+    z-index:15;
+    background:rgba(2,3,5,0.96);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    overflow-y:auto;
+  }
+  #badge-wall-box{
+    width:100%; max-width:520px;
+  }
+  #badge-wall-progress{
+    font-size:11px;
+    color:var(--amber-dim);
+    letter-spacing:1px;
+    margin-bottom:16px;
+  }
+  #badge-wall-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .band-slot{
+    border:1px solid rgba(255,176,0,0.15);
+    padding:12px 6px;
+    text-align:center;
+    opacity:0.35;
+  }
+  .band-slot.lit{
+    opacity:1;
+    border-color:var(--amber);
+    box-shadow:0 0 14px rgba(255,176,0,0.15);
+  }
+  .band-slot .band-emoji{ font-size:22px; }
+  .band-slot .band-name{
+    font-size:10px;
+    letter-spacing:1px;
+    color:var(--amber-dim);
+    margin-top:4px;
+  }
+  .band-slot .band-count{
+    font-size:10px;
+    margin-top:2px;
+  }
+  #badge-wall-list{
+    font-size:13px;
+    line-height:2;
+  }
+  #badge-wall-list .badge-row{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px dashed rgba(255,176,0,0.15);
+    padding:6px 0;
+  }
+  #badge-wall-list .badge-row .badge-date{
+    color:var(--amber-dim);
+    font-size:11px;
+  }
+  #badge-wall-empty{
+    font-size:13px;
+    color:var(--amber-dim);
+    line-height:1.9;
+  }
 </style>
 </head>
 <body>
@@ -722,7 +795,7 @@
   <div id="terminal">
     <div class="term-header">
       <span>接收站 · 005 号站</span>
-      <span><span class="blink">● 待命</span><span id="mute-toggle" title="声音开关">♪ 开</span></span>
+      <span><span class="blink">● 待命</span><span id="mute-toggle" title="声音开关">♪ 开</span><span id="badge-wall-toggle" title="领航员徽章册">🏅</span></span>
     </div>
 
     <div id="screen-boot">
@@ -899,6 +972,18 @@
     </div>
   </div>
 
+  <div id="badge-wall-panel" class="hidden">
+    <div id="badge-wall-box">
+      <div class="auth-prompt">领航员徽章册</div>
+      <div id="badge-wall-progress"></div>
+      <div id="badge-wall-grid"></div>
+      <div id="badge-wall-list"></div>
+      <div class="upload-actions">
+        <button class="auth-btn secondary" id="btn-badge-wall-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <div id="start-overlay">
     <div class="start-title">PROJECT FARSAIL · 远航计划</div>
     <div class="start-btn">按下开始接收</div>
@@ -957,11 +1042,76 @@ async function loadRemoteProfile(){
       if(!state.parentMessage && p.parentMessage) state.parentMessage = p.parentMessage;
     }
     (p.completed||[]).forEach(c=>{
-      if(c && c.id && !state.completed.some(x=>x.id===c.id)) state.completed.push(c);
+      if(!c || !c.id) return;
+      const existing = state.completed.find(x=>x.id===c.id);
+      if(existing){
+        // 补全旧记录缺的字段（比如徽章墙上线前就已完成的讯号）
+        if(!existing.band && c.band) existing.band = c.band;
+        if(!existing.rank && c.rank) existing.rank = c.rank;
+      } else {
+        state.completed.push(c);
+      }
     });
     saveState();
   }catch(e){ /* 本地 file:// 打开时 fetch 会失败，忽略即可 */ }
 }
+
+/* ============ 领航员徽章册（母本 §5/§9：收集式徽章墙，不按天计） ============ */
+const BANDS = [
+  { emoji:'🔭', name:'天文' },
+  { emoji:'🦕', name:'生命' },
+  { emoji:'⏳', name:'往昔' },
+  { emoji:'🔢', name:'数字' },
+  { emoji:'⚙️', name:'造物' },
+  { emoji:'🎨', name:'共鸣' },
+  { emoji:'📜', name:'古语' },
+];
+
+function renderBadgeWall(){
+  const grid = document.getElementById('badge-wall-grid');
+  const list = document.getElementById('badge-wall-list');
+  const progress = document.getElementById('badge-wall-progress');
+
+  const litBands = new Set(state.completed.map(c => (c.band||'').split(' ')[1] || (c.band||'')).filter(Boolean));
+  const litCount = BANDS.filter(b => litBands.has(b.name)).length;
+  progress.textContent = `${litCount} / ${BANDS.length} 频段已点亮　·　累计 ${state.completed.length} 枚徽章`;
+
+  grid.innerHTML = '';
+  BANDS.forEach(b=>{
+    const count = state.completed.filter(c => (c.band||'').includes(b.name)).length;
+    const slot = document.createElement('div');
+    slot.className = 'band-slot' + (count > 0 ? ' lit' : '');
+    slot.innerHTML = `<div class="band-emoji">${b.emoji}</div><div class="band-name">${b.name}</div>` +
+      (count > 0 ? `<div class="band-count">×${count}</div>` : '');
+    grid.appendChild(slot);
+  });
+
+  list.innerHTML = '';
+  if(state.completed.length === 0){
+    list.innerHTML = '<div id="badge-wall-empty">还没有徽章——完成第一段讯号,徽章册就会开始点亮。不用赶,慢慢来,一枚徽章花几天也没关系。</div>';
+    return;
+  }
+  const sorted = [...state.completed].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  sorted.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'badge-row';
+    row.innerHTML = `<span>${c.band ? c.band+' · ' : ''}${c.badge || c.id}</span><span class="badge-date">${c.date || ''}</span>`;
+    list.appendChild(row);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const toggle = document.getElementById('badge-wall-toggle');
+  const panel = document.getElementById('badge-wall-panel');
+  toggle.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    renderBadgeWall();
+    panel.classList.remove('hidden');
+  });
+  document.getElementById('btn-badge-wall-close').addEventListener('click', ()=>{
+    panel.classList.add('hidden');
+  });
+});
 
 function saveState(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
@@ -1736,7 +1886,13 @@ async function revealEchoReturn(){
 
   state.stage = 'done';
   if(!state.completed.some(c => c.id === signalData.id)){
-    state.completed.push({ id: signalData.id, badge: signalData.badge, date: new Date().toISOString().slice(0,10) });
+    state.completed.push({
+      id: signalData.id,
+      badge: signalData.badge,
+      band: signalData.band || '',
+      rank: signalData.rank || '',
+      date: new Date().toISOString().slice(0,10)
+    });
   }
   saveState();
 }

@@ -1,6 +1,6 @@
 {
   "callsign": "dmx1234",
   "completed": [
-    { "id": "No.001", "badge": "初次接触 First Contact", "date": "2026-07-02" }
+    { "id": "No.001", "badge": "初次接触 First Contact", "band": "🔭 天文", "rank": "见习领航员", "date": "2026-07-02" }
   ]
 }
