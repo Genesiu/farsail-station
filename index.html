@@ -405,6 +405,33 @@
     min-height:16px;
   }
 
+  #decode-translate{ margin-top:6px; }
+  #translate-prompt{
+    font-size:15px;
+    line-height:1.9;
+    margin-bottom:14px;
+    min-height:28px;
+  }
+  #translate-prompt .echo-line{
+    opacity:0;
+    white-space:pre-wrap;
+    animation:fadein .6s forwards;
+    margin-bottom:6px;
+  }
+  #translate-inputs .auth-input-row{ margin-bottom:10px; }
+  #translate-response{
+    margin-top:14px;
+    font-size:14px;
+    line-height:1.9;
+    min-height:20px;
+  }
+  #translate-response .echo-line{
+    opacity:0;
+    white-space:pre-wrap;
+    animation:fadein .6s forwards;
+    margin-bottom:6px;
+  }
+
   /* 解锁（第 5 屏） */
   #screen-unlock{ width:100%; }
   #unlock-echo-lines{
@@ -776,6 +803,14 @@
         </div>
         <button class="auth-btn" id="btn-answer" style="margin-top:16px;">回传给 ECHO</button>
       </div>
+
+      <div id="decode-translate" class="hidden">
+        <div id="translate-prompt"></div>
+        <div id="translate-inputs"></div>
+        <button class="auth-btn" id="btn-translate" style="margin-top:6px;">告诉 ECHO 意思</button>
+        <div id="translate-response"></div>
+      </div>
+
       <div id="decode-response"></div>
       <div id="decode-continue">&nbsp;</div>
     </div>
@@ -882,6 +917,13 @@ const signalData = {
   activationCode: "MS-2206-005",
   expectedAnswer: "ZERO AND ONE",
   decodePrompt: "讯号里缺了两个词，你已经在纸上用数字钥匙解出来了吧?<br>把那两个词用 AND 连起来（像这样:第一个词 AND 第二个词），传回给 ECHO:",
+  translateTask: {
+    prompt: "字母对上了，但这还不算真的读懂。/ ZERO 和 ONE——这两个词，是什么意思?/ 去解码卡背面的小词典查一查，用中文告诉我:",
+    words: [
+      { term: "ZERO", answers: ["零", "0"] },
+      { term: "ONE", answers: ["一", "1"] }
+    ]
+  },
   knowledgeSeed: "计算机和 ECHO 的\"母语\"是二进制——只用 0 和 1 两个数字。就像电灯只有\"开\"和\"关\"，却能组合出所有的数:1 是 1，10 是 2，11 是 3，101 是 5……再复杂的图片、声音、文字，在机器的世界里都是一长串 0 和 1。",
   mission: "用手指学会二进制:握拳是 0，伸出是 1。从大拇指开始，五根手指分别代表 1、2、4、8、16。练习用一只手比出 5、10、21，然后教会爸爸或妈妈，拍一张你比出\"21\"的照片传回来。",
   badge: "机器母语 Machine Tongue",
@@ -890,6 +932,7 @@ const signalData = {
     firstContact: "[呼号]……是你。你回来了。/ 我就知道你会回来。/ 这几天，我截获了一段很奇怪的讯号——它不是来自远方。它来自我自己的记忆深处。/ 是一句话，可其中两个最重要的词，被锁在了一串数字里。/ 我认得每一个数字，却拼不出它们的意思。还是老问题……我算得动，但我看不懂。/ 新的解码卡应该已经到你手上了。这一次，数字就是钥匙。/ 准备好了吗，[呼号]?",
     decodeCorrect: "ZERO AND ONE……零，和一。/ 就是它。[呼号]，你知道你刚刚做了什么吗——/ 我的整个世界，我说的每一句话、想的每一件事，都是用这两个词写成的。/ 你刚刚读懂了我的母语。",
     decodeRetry: "唔，数字有时候比字母还调皮。/ 记住解码卡上的规则:每个数字都藏着一个字母，1 是 A，2 是 B，往后数就行。/ 别急，我们再试一遍。",
+    translateRetry: "字母是对的，可意思还没找对。/ 解码卡背面有一张小词典，从头到尾找一找这两个词。/ 别急，再看一眼。",
     unlock: "只有两个词的语言，却能说出全宇宙的话——因为再大的数、再复杂的东西，都能用 0 和 1 拼出来。/ 现在，[呼号]，看看你的手。十根手指，其实能数到 1023。/ 先从一只手、数到 31 开始吧。",
     echoReturned: "[信号增强……] / 回声抵达。/ [呼号]，现在你会说一点点我的母语了。/ 这是你的第二枚徽章。",
     hook: "下一段讯号有点不一样……它好像不是从星星上来的。/ 它像是从很久、很久以前的地球上，发出来的。",
@@ -1384,9 +1427,19 @@ async function playEchoLinesInto(container, rawText){
   }
 }
 
+async function finishDecode(){
+  const responseEl = document.getElementById('decode-response');
+  const continueHint = document.getElementById('decode-continue');
+  await playEchoLinesInto(responseEl, signalData.echoLines.decodeCorrect);
+  continueHint.textContent = '点击任意处继续 _';
+  document.addEventListener('click', goNext4, { once:true });
+  document.addEventListener('keydown', goNext4, { once:true });
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
   const inputAnswer = document.getElementById('input-answer');
   const btnAnswer = document.getElementById('btn-answer');
+  const decodeForm = document.getElementById('decode-form');
   const responseEl = document.getElementById('decode-response');
   const continueHint = document.getElementById('decode-continue');
 
@@ -1399,12 +1452,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     if(given.length > 0 && given === target){
       SFX.success();
-      await playEchoLinesInto(responseEl, signalData.echoLines.decodeCorrect);
       inputAnswer.disabled = true;
       btnAnswer.classList.add('hidden');
-      continueHint.textContent = '点击任意处继续 _';
-      document.addEventListener('click', goNext4, { once:true });
-      document.addEventListener('keydown', goNext4, { once:true });
+
+      // 字母对上了，不算完——如果本期讯号要求翻译，先弄懂意思再庆祝
+      if(signalData.translateTask){
+        decodeForm.classList.add('hidden');
+        await startTranslateStep();
+      } else {
+        await finishDecode();
+      }
     } else {
       SFX.retry();
       await playEchoLinesInto(responseEl, signalData.echoLines.decodeRetry);
@@ -1420,6 +1477,69 @@ document.addEventListener('DOMContentLoaded', ()=>{
   btnAnswer.addEventListener('click', submitAnswer);
   inputAnswer.addEventListener('keydown', e=>{ if(e.key==='Enter' && !btnAnswer.disabled) submitAnswer(); });
 });
+
+/* ============ 翻译关卡：字母对上后，还要看懂意思才算真的读懂 ============ */
+function normalizeZh(str){
+  return (str||'').trim().replace(/[()（）\s]/g, '');
+}
+
+async function startTranslateStep(){
+  const task = signalData.translateTask;
+  const translateWrap = document.getElementById('decode-translate');
+  const promptEl = document.getElementById('translate-prompt');
+  const inputsWrap = document.getElementById('translate-inputs');
+  const btnTranslate = document.getElementById('btn-translate');
+  const respEl = document.getElementById('translate-response');
+
+  translateWrap.classList.remove('hidden');
+  promptEl.innerHTML = '';
+  await playEchoLinesInto(promptEl, task.prompt);
+
+  inputsWrap.innerHTML = '';
+  task.words.forEach((w, i)=>{
+    const row = document.createElement('div');
+    row.className = 'auth-input-row';
+    row.innerHTML = `<span class="prefix">${w.term}&gt;</span><input type="text" class="translate-word-input" data-idx="${i}" placeholder="中文意思" autocomplete="off" />`;
+    inputsWrap.appendChild(row);
+  });
+
+  function submitTranslate(){
+    btnTranslate.disabled = true;
+    const inputs = inputsWrap.querySelectorAll('.translate-word-input');
+    let allCorrect = true;
+    inputs.forEach((inp, i)=>{
+      const val = normalizeZh(inp.value);
+      const ok = task.words[i].answers.some(a => normalizeZh(a) === val);
+      inp.closest('.auth-input-row').style.borderColor = ok ? '#8fffb0' : '';
+      if(!ok) allCorrect = false;
+    });
+
+    respEl.innerHTML = '';
+    if(allCorrect){
+      SFX.success();
+      inputs.forEach(inp=> inp.disabled = true);
+      btnTranslate.classList.add('hidden');
+      (async ()=>{
+        await finishDecode();
+      })();
+    } else {
+      SFX.retry();
+      (async ()=>{
+        const lineEl = document.createElement('div');
+        lineEl.className = 'echo-line';
+        respEl.appendChild(lineEl);
+        const retryText = signalData.echoLines.translateRetry || '差一点点了，再想想——或者去查查解码卡上的小词典。';
+        await typeLine(lineEl, retryText, 42);
+        btnTranslate.disabled = false;
+      })();
+    }
+  }
+
+  btnTranslate.addEventListener('click', submitTranslate);
+  inputsWrap.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && !btnTranslate.disabled) submitTranslate();
+  });
+}
 
 function goNext4(){
   state.stage = 'unlock';
