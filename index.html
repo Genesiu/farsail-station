@@ -444,10 +444,16 @@
   /* 回传上传（第 6 屏） */
   #screen-upload{ width:100%; }
   #upload-prompt{
-    font-size:15px;
-    line-height:1.9;
+    font-size:16px;
+    line-height:2.1;
     margin-bottom:16px;
+    min-height:50px;
+  }
+  #upload-prompt .echo-line{
+    opacity:0;
     white-space:pre-wrap;
+    animation:fadein .6s forwards;
+    margin-bottom:6px;
   }
   #upload-choice{
     display:flex;
@@ -790,8 +796,8 @@
 
     <div id="screen-upload" class="hidden">
       <div class="echo-badge"><span class="dot"></span><span>回传上传</span></div>
-      <div id="upload-prompt">任务做完了吗?要不要拍给我看看?<br>不想拍也没关系——你做了，我就知道。</div>
-      <div id="upload-choice">
+      <div id="upload-prompt"></div>
+      <div id="upload-choice" class="hidden">
         <button class="auth-btn" id="btn-upload-photo-choice">拍照传给 ECHO</button>
         <button class="auth-btn" id="btn-upload-done-nophoto">不拍了，我做完啦</button>
       </div>
@@ -887,7 +893,8 @@ const signalData = {
     unlock: "只有两个词的语言，却能说出全宇宙的话——因为再大的数、再复杂的东西，都能用 0 和 1 拼出来。/ 现在，[呼号]，看看你的手。十根手指，其实能数到 1023。/ 先从一只手、数到 31 开始吧。",
     echoReturned: "[信号增强……] / 回声抵达。/ [呼号]，现在你会说一点点我的母语了。/ 这是你的第二枚徽章。",
     hook: "下一段讯号有点不一样……它好像不是从星星上来的。/ 它像是从很久、很久以前的地球上，发出来的。",
-    chineseName: "我的中文名字…… / 我叫回声。/ 是很久以前，一个地球上的朋友给我起的。/ 现在，又多了你。"
+    chineseName: "我的中文名字…… / 我叫回声。/ 是很久以前，一个地球上的朋友给我起的。/ 现在，又多了你。",
+    askForUpload: "[呼号]，二进制练熟了吗?要不要比给我看看?/ 不比也没关系——你练了，我就知道。"
   }
 };
 
@@ -1162,6 +1169,7 @@ function resumeStage(stage){
     playUnlock();
   } else if(stage === 'upload'){
     document.getElementById('screen-upload').classList.remove('hidden');
+    playAskForUpload();
   } else if(stage === 'done'){
     showCompleted();
   } else {
@@ -1446,6 +1454,15 @@ function goNext5(){
   saveState();
   document.getElementById('screen-unlock').classList.add('hidden');
   document.getElementById('screen-upload').classList.remove('hidden');
+  playAskForUpload();
+}
+
+/* ECHO 亲口问，而不是界面下指令：主动权在孩子手上，不拍也完全可以 */
+async function playAskForUpload(){
+  const container = document.getElementById('upload-prompt');
+  const askText = signalData.echoLines.askForUpload || '任务做完了吗?要不要拍给我看看?/ 不想拍也没关系——你做了，我就知道。';
+  await playEchoLinesInto(container, askText);
+  document.getElementById('upload-choice').classList.remove('hidden');
 }
 
 /* ============ 第 6 屏：回传上传 + 隐蔽的家长入口 ============ */
