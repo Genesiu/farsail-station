@@ -449,6 +449,16 @@
     margin-bottom:16px;
     white-space:pre-wrap;
   }
+  #upload-choice{
+    display:flex;
+    gap:10px;
+    margin-top: 4px;
+  }
+  #upload-choice .auth-btn{
+    flex:1;
+    margin-top:0;
+    text-align:center;
+  }
   #upload-dropzone{
     border:1px dashed var(--amber-dim);
     padding:26px 16px;
@@ -780,12 +790,16 @@
 
     <div id="screen-upload" class="hidden">
       <div class="echo-badge"><span class="dot"></span><span>回传上传</span></div>
-      <div id="upload-prompt">任务完成了吗?把你画的、拍的东西传回来，讯号会带着它飞向晨星号。</div>
-      <div id="upload-dropzone">点击这里，选一张照片</div>
+      <div id="upload-prompt">任务做完了吗?要不要拍给我看看?<br>不想拍也没关系——你做了，我就知道。</div>
+      <div id="upload-choice">
+        <button class="auth-btn" id="btn-upload-photo-choice">拍照传给 ECHO</button>
+        <button class="auth-btn" id="btn-upload-done-nophoto">不拍了，我做完啦</button>
+      </div>
+      <div id="upload-dropzone" class="hidden">点击这里，选一张照片</div>
       <input type="file" id="upload-input" accept="image/*" class="hidden" />
       <img id="upload-preview" alt="预览" />
-      <div class="upload-actions">
-        <button class="auth-btn secondary" id="btn-upload-skip">先跳过，之后再传</button>
+      <div class="upload-actions hidden" id="upload-send-row">
+        <button class="auth-btn secondary" id="btn-upload-back">换一种方式</button>
         <button class="auth-btn" id="btn-upload-send">发送讯号</button>
       </div>
 
@@ -1439,11 +1453,23 @@ let uploadedFileName = null;
 let parentMessage = '';
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  const choiceRow = document.getElementById('upload-choice');
+  const btnPhotoChoice = document.getElementById('btn-upload-photo-choice');
+  const btnDoneNoPhoto = document.getElementById('btn-upload-done-nophoto');
   const dropzone = document.getElementById('upload-dropzone');
   const fileInput = document.getElementById('upload-input');
   const preview = document.getElementById('upload-preview');
-  const btnSkip = document.getElementById('btn-upload-skip');
+  const sendRow = document.getElementById('upload-send-row');
+  const btnBack = document.getElementById('btn-upload-back');
   const btnSend = document.getElementById('btn-upload-send');
+
+  // 两个平等的选择：拍照，或者直接口头告诉 ECHO 做完了（不拍也照样能继续）
+  btnDoneNoPhoto.addEventListener('click', goNext6);
+  btnPhotoChoice.addEventListener('click', ()=>{
+    choiceRow.classList.add('hidden');
+    dropzone.classList.remove('hidden');
+    fileInput.click();
+  });
 
   dropzone.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', ()=>{
@@ -1454,9 +1480,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     preview.src = url;
     preview.style.display = 'block';
     dropzone.textContent = `已选择: ${file.name}（点击可重新选择）`;
+    sendRow.classList.remove('hidden');
   });
 
-  btnSkip.addEventListener('click', goNext6);
+  btnBack.addEventListener('click', ()=>{
+    choiceRow.classList.remove('hidden');
+    dropzone.classList.add('hidden');
+    sendRow.classList.add('hidden');
+    preview.style.display = 'none';
+    uploadedFileName = null;
+  });
   btnSend.addEventListener('click', goNext6);
 
   // 家长入口：不显眼，只有点到才展开
