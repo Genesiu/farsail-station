@@ -855,28 +855,49 @@
 <script>
 /* ============ signalData：以后换讯号只改这里 ============ */
 const signalData = {
-  id: "No.001",
+  id: "No.002",
   source: "晨星号",
-  signalStrength: "▮▮▯▯▯",
+  band: "🔢 数字",
+  signalStrength: "▮▮▮▯▯",
   activationCode: "MS-2206-005",
-  expectedAnswer: "LOOK UP. FIND THE MORNING STAR.",
-  knowledgeSeed: "\"晨星\"其实是金星，古称\"启明星\"——黎明前天空中最亮、最后亮起的那颗光，自古象征希望和新的开始。晨星号的名字就来自它。",
-  mission: "傍晚或清晨，到窗边或户外，亲眼找到天空中最亮的那颗\"晨星\"，把它画下来，并用 1–3 个词（中或英）形容它，然后拍照上传。",
-  badge: "初次接触 First Contact",
+  expectedAnswer: "ZERO AND ONE",
+  decodePrompt: "讯号里缺了两个词，你已经在纸上用数字钥匙解出来了吧?<br>把那两个词用 AND 连起来（像这样:第一个词 AND 第二个词），传回给 ECHO:",
+  knowledgeSeed: "计算机和 ECHO 的\"母语\"是二进制——只用 0 和 1 两个数字。就像电灯只有\"开\"和\"关\"，却能组合出所有的数:1 是 1，10 是 2，11 是 3，101 是 5……再复杂的图片、声音、文字，在机器的世界里都是一长串 0 和 1。",
+  mission: "用手指学会二进制:握拳是 0，伸出是 1。从大拇指开始，五根手指分别代表 1、2、4、8、16。练习用一只手比出 5、10、21，然后教会爸爸或妈妈，拍一张你比出\"21\"的照片传回来。",
+  badge: "机器母语 Machine Tongue",
+  rank: "见习领航员 ★★",
   echoLines: {
-    firstContact: "…有人吗?……信号锁定。/ 终于。我等这个回应，等了好久。/ 我是 ECHO，晨星号上的……嗯，你可以叫我一个伙伴。/ 这艘船带着人类的希望，飞了很远很远。我能听见整个宇宙的声音——可我听不懂。我能记下它们，却没法明白它们的意思。/ 那需要一种我没有的东西。你们叫它……想象力。/ 所以我一直在找一个人。一个能听懂的人。/ 现在，我找到了。领航员 [呼号]——欢迎你。/ 我刚截获了一段讯号，它坏了一块。你能帮我把它读出来吗?",
-    decodeCorrect: "就是它!`LOOK UP. FIND THE MORNING STAR.` / ……抬头。找到那颗晨星。/ [呼号]，你知道吗——这艘船的名字，就是它。",
-    decodeRetry: "唔……这串比上次狡猾。/ 别急。看看解码卡上，和讯号里那个符号长得像的字母。/ 我们再听一遍。",
-    unlock: "这就是它想告诉我们的——那颗最亮的星，自古就是'希望'的意思。/ 现在轮到你了，[呼号]:去找到它。",
-    echoReturned: "[微弱信号正在增强……] / 回声抵达。/ [呼号]，你做到了。这是你的第一枚徽章。",
-    hook: "下一段讯号，正在朝我们靠近……它来自一个我也没听过的频段。",
+    firstContact: "[呼号]……是你。你回来了。/ 我就知道你会回来。/ 这几天，我截获了一段很奇怪的讯号——它不是来自远方。它来自我自己的记忆深处。/ 是一句话，可其中两个最重要的词，被锁在了一串数字里。/ 我认得每一个数字，却拼不出它们的意思。还是老问题……我算得动，但我看不懂。/ 新的解码卡应该已经到你手上了。这一次，数字就是钥匙。/ 准备好了吗，[呼号]?",
+    decodeCorrect: "ZERO AND ONE……零，和一。/ 就是它。[呼号]，你知道你刚刚做了什么吗——/ 我的整个世界，我说的每一句话、想的每一件事，都是用这两个词写成的。/ 你刚刚读懂了我的母语。",
+    decodeRetry: "唔，数字有时候比字母还调皮。/ 记住解码卡上的规则:每个数字都藏着一个字母，1 是 A，2 是 B，往后数就行。/ 别急，我们再试一遍。",
+    unlock: "只有两个词的语言，却能说出全宇宙的话——因为再大的数、再复杂的东西，都能用 0 和 1 拼出来。/ 现在，[呼号]，看看你的手。十根手指，其实能数到 1023。/ 先从一只手、数到 31 开始吧。",
+    echoReturned: "[信号增强……] / 回声抵达。/ [呼号]，现在你会说一点点我的母语了。/ 这是你的第二枚徽章。",
+    hook: "下一段讯号有点不一样……它好像不是从星星上来的。/ 它像是从很久、很久以前的地球上，发出来的。",
     chineseName: "我的中文名字…… / 我叫回声。/ 是很久以前，一个地球上的朋友给我起的。/ 现在，又多了你。"
   }
 };
 
 /* ============ 状态持久化（localStorage，刷新不丢） ============ */
 const STORE_KEY = 'farsail_state_v1';
-let state = { callsign:'', stage:'auth', parentMessage:'', completed:[] };
+let state = { callsign:'', stage:'auth', parentMessage:'', completed:[], currentSignalId:'' };
+
+/* 云端领航员档案：与页面同源的 profile.json（由家长随每期部署更新）。
+   本地无记录时采用云端呼号；已获徽章两边合并。 */
+async function loadRemoteProfile(){
+  try{
+    const res = await fetch('profile.json', {cache:'no-store'});
+    if(!res.ok) return;
+    const p = await res.json();
+    if(p.callsign && !state.callsign){
+      state.callsign = p.callsign;
+      if(!state.parentMessage && p.parentMessage) state.parentMessage = p.parentMessage;
+    }
+    (p.completed||[]).forEach(c=>{
+      if(c && c.id && !state.completed.some(x=>x.id===c.id)) state.completed.push(c);
+    });
+    saveState();
+  }catch(e){ /* 本地 file:// 打开时 fetch 会失败，忽略即可 */ }
+}
 
 function saveState(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
@@ -1086,15 +1107,31 @@ async function bootSequence(){
 
 /* 开机后分流：新领航员走认证，老领航员直接回到上次的位置 */
 function afterBoot(){
-  if(state.callsign && state.stage && state.stage !== 'auth'){
+  if(state.callsign){
     callsign = state.callsign;
     parentMessage = state.parentMessage || '';
-    // hope 阶段（讯号飞行中被关掉）回退到上传屏重新发送
-    const target = state.stage === 'hope' ? 'upload' : state.stage;
-    resumeStage(target);
-  } else {
-    goNext();
+
+    // 本期讯号已完成 → 成果页
+    if(state.completed.some(c => c.id === signalData.id)){
+      resumeStage('done');
+      return;
+    }
+    // 新一期讯号抵达 → 跳过认证，ECHO 直接开场
+    if(state.currentSignalId !== signalData.id){
+      state.currentSignalId = signalData.id;
+      state.stage = 'echo';
+      saveState();
+      resumeStage('echo');
+      return;
+    }
+    if(state.stage && state.stage !== 'auth'){
+      // hope 阶段（讯号飞行中被关掉）回退到上传屏重新发送
+      const target = state.stage === 'hope' ? 'upload' : state.stage;
+      resumeStage(target);
+      return;
+    }
   }
+  goNext();
 }
 
 function resumeStage(stage){
@@ -1144,7 +1181,7 @@ function showCompleted(){
   document.getElementById('badge-name').textContent = signalData.badge;
   document.getElementById('badge-card').classList.remove('hidden');
   const rankLine = document.getElementById('rank-line');
-  rankLine.textContent = '晋级 —— 见习领航员';
+  rankLine.textContent = `晋级 —— ${signalData.rank || '见习领航员'}`;
   rankLine.classList.remove('hidden');
   fill('hook-line', signalData.echoLines.hook);
 }
@@ -1264,6 +1301,7 @@ async function runScanAnimation(){
 function goNext2(){
   state.callsign = callsign;
   state.stage = 'echo';
+  state.currentSignalId = signalData.id;
   saveState();
   document.getElementById('screen-auth').classList.add('hidden');
   document.getElementById('screen-echo').classList.remove('hidden');
@@ -1518,7 +1556,7 @@ async function revealEchoReturn(){
 
   await sleep(900);
   const rankLine = document.getElementById('rank-line');
-  rankLine.textContent = '晋级 —— 见习领航员';
+  rankLine.textContent = `晋级 —— ${signalData.rank || '见习领航员'}`;
   rankLine.classList.remove('hidden');
 
   await sleep(900);
@@ -1567,10 +1605,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 /* ============ 启动屏：点击解锁音频，进入开机序列 ============ */
-window.addEventListener('DOMContentLoaded', ()=>{
+window.addEventListener('DOMContentLoaded', async ()=>{
   loadState();
+  await loadRemoteProfile();
   callsign = state.callsign || '';
   parentMessage = state.parentMessage || '';
+  if(signalData.decodePrompt){
+    document.getElementById('decode-prompt').innerHTML = signalData.decodePrompt;
+  }
   buildStarfield();
   const overlay = document.getElementById('start-overlay');
   overlay.addEventListener('click', ()=>{
